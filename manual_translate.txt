@@ -1,0 +1,124 @@
+simple.py:
+=========  Python Code  =========
+    x = 3 + 2
+    print(x)
+
+=========  Pep/9 Code  =========
+            BR      program
+x:          .block  2
+program:    LDWA    2, i
+            ADDA    3, i
+            STWA    x, d
+            DECO    x, d
+            LDBA    '\n', i
+            STBA    charOut, d
+            .END
+
+
+
+
+add_sub.py:
+=========  Python Code  =========
+    value = int(input())
+    _UNIV = 42
+    result = value + _UNIV
+    variable = 3
+    result = result - variable
+    result = result - 1
+    print(result)
+
+=========  Pep/9 Code  =========
+            BR      program
+value:      .block  2
+UNIV:       .EQUATE 42
+variable:   .block  2
+result:     .block  2
+program:    DECI    value, d
+            LDWA    value, d
+            ADDA    UNIV, i
+            STWA    result, d
+            LDWA    3, i
+            STWA    variable, d
+            LDWA    result, d
+            SUBA    variable, d
+            SUBA    1, i
+            STWA    result, d
+            DECO    result, d
+            .END
+            
+
+Global Variable Explanation:
+A global variable is a variable whose state is shared among all methods, and it may be modified or used by those methods. For example, in add_sub.py, the variable result keeps being modified throughout the 
+program, and it is added or substracted multiple times; therefore, it would be appropriate to call it a global variable.
+
+If one of the variables is picked from a RBS program, it should be decided as a global one if it appears in most of the functions, and all methods share only one copy of it (i.e., static).
+
+
+Why NOP1?
+NOP stands for no operation. The translator inserts an NOP instruction at the beginning of each branch. We suppose the primary reason for this is to cause a small amount of time delay so that all memory
+allocation done above has finished their work, which is required for correct computation of the main process. Without the delay, the main process may execute prior to the initialization (memory allocation)
+of the variables and fails to execute. It can also serve as a placeholder which could come into useful in later development process since we may want to insert some code before the current program (e.g., 
+pre-computation before "value = int(input())").
+It could also force memory alignment, such that 
+
+
+https://en.wikipedia.org/wiki/NOP_(code)#:~:text=A%20NOP%20is%20most%20commonly,in%20program%20development%20(or%20to
+
+
+Visitor design pattern: https://refactoring.guru/design-patterns/visitor
+
+
+Role of Global Variable Visitor
+- The global variable visitor is responsible for extracting information about the global variables defined in the RBS, specifically the name of global variables. It has a visit_Assign() function that stores
+  the variable name specified by targets in the AST to the class's instance variable "results".
+- Rationale
+    - With this visitor, we are able to initialize all global variables that will be used in the main process. Later on, either in top level program or functional calls, we can refer to these global
+    variables (store/load) without any program thanks to the initialization of this visitor. In other words, this visitor lays the foundation for subsequent programs to use and modify global variables.
+- Limitation
+    1. Can not extract local variables (even though this class is not responsible for local variables, we will need some class that is responsible for translating local variables later on.)
+
+
+Top Level Program Visitor
+- Top level program visitor extracts and stores all top level instructions' information (label and instruction) in a list based on the AST. This is achieved by calling different functions that are created to 
+  handle each corresponding operation in the AST and translate it into correct format.
+- Rationale
+    - This visitor allows us to get and store all generated instructions and reformat it without altering the existing content in AST (node) class, enhancing the open/closed principle. And because of creating
+      a new class, it groups the same behavior methods acted as single responsbility. In the same time, it is easier to accumulate all instructions.
+- Limitation
+    1. Does not support interpretation of function calls.
+    2. Does not support translation of conditional statements.
+
+
+Role of Static Memory Allocation Generator
+- The static memory allocation generator is responsible for store information about global variables and generate pep/9 assembly code for them.
+- Rationale
+    - This generator enhances the signal responsbility principle as it separates the feature of generating (printing) assembly codes from visiting AST nodes, ensuring each class takes care of their 
+    individual responsbility.
+- Limitation
+    1. It only supports variables that have a size of 2 bytes.
+    2. It does not allow the definition of constant variables (i.e., .EQUATE instruction). 
+
+
+Role of Entry Point Generator
+= The entry point generator stores instructions that the program visitor translated from RBS program to pep/9 assembly syntax, and it is also responsible for printing them out.
+- Rationale
+    - Similar to the static memory allocation generator, this generator does nothing but to output the assembly code for the top level program. Therefore, it also enhanced the single responsbility principle
+    by isolating printing from traversing the AST.
+- Limitation
+    - This generator only prints out instructions that was generated by TopLevelProgram.py; hence, its limitations follows from the Top Level Program Visitor.
+
+
+gcd.py
+
+a = int(input())
+b = int(input())
+
+while a != b:
+    if a > b:
+        a = a - b
+    else:
+        b = b - a
+
+print(a) 
+
+
